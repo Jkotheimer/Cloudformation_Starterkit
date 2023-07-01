@@ -1,0 +1,20 @@
+{
+    "name": "my-application",
+    "description": "My Application",
+    "version": "0.0.1",
+    "type": "module",
+    "private": true,
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.188.0",
+        "@aws-sdk/client-s3": "^3.359.0",
+        "@aws-sdk/lib-dynamodb": "^3.188.0",
+        "archiver": "^5.3.1",
+        "decompress": "^4.2.1"
+    },
+    "devDependencies": {
+        "aws-sdk-client-mock": "^2.0.0"
+    },
+    "scripts": {
+        "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js"
+    }
+}
