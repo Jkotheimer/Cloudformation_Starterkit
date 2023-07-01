@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  my-app
+Transform:
+  - AWS::Serverless-2016-10-31
+
+#################################################
+Globals:
+  Function:
+    Tracing: Active
+  Api:
+    TracingEnabled: true
+
+#################################################
+Resources:
+  #--------------------------------------------
+  #NodeServer:
+  #  Type: AWS::EC2::Instance
+  #  Properties:
+  #    AvailabilityZone: us-east-2a
+
+  GetInfoFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockertag: nodejs18.x
+      Dockerfile: Dockerfile
+      DockerContext: ./
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        Command: ["index.getInfo"]
+      MemorySize: 128
+      Timeout: 100
+      Description: A simple example includes a HTTP get method to get all items from a DynamoDB table.
+      Policies:
+        # Give Create/Read/Update/Delete Permissions to the UserTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserTable
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: !Ref UserTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+            Auth:
+              Authorizer: AWS_IAM
+              InvokeRole: null
+              ResourcePolicy:
+                CustomStatements:
+                  [
+                    {
+                      "Effect": "Allow",
+                      "Principal":
+                        {
+                          "AWS": !Sub "arn:aws:iam::${AWS::AccountId}:user/Authorized_Application_User",
+                        },
+                      "Action": "execute-api:Invoke",
+                      "Resource": "execute-api:/*/GET/",
+                    },
+                  ]
+
+  # -------------------------------------------
+  UserTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+
+  # -------------------------------------------
+  Secrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: b2cSecrets
+      Description: Integration Secrets
+      SecretString: '{"integrationKey":"{integrationKey}"}'
+
+  # -------------------------------------------
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name: !Sub ApplicationInsights-SAM-${AWS::StackName}
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+
+  # -------------------------------------------
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName: !Ref ApplicationResourceGroup
+      AutoConfigurationEnabled: true
+
+#################################################
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
